@@ -16,6 +16,9 @@ rawdata <- mutate(rawdata,
                   ID=paste('P', 1:nrow(rawdata))) |> 
   select(ID, everything())
 predvars <- FindVars(c('_mm','_g'))
+scaled <- rawdata |> 
+  select(predvars$names) |> 
+  caret::preProcess(method = c('center',"scale"))
 
 lda_formula <- paste('species',
                        paste(predvars$names, collapse='+'),
@@ -39,11 +42,22 @@ confusionMatrix(lda_pred$class,rawdata$species)
 
 
 tdata <- readRDS('Data/cervical.RData')
+predvars <- ColSeeker(tdata,namepattern = "-")
+#preProcess
+scale_rules <- tdata |> 
+  select(predvars$names) |> 
+  caret::preProcess(method = c("zv","nzv",
+                               "YeoJohnson",
+                               "corr",
+                               "scale","center"))
+tdata <- predict(scale_rules,tdata) 
+predvars <- ColSeeker(tdata,namepattern = "-")
+
 lda_out2 <- lda(x = tdata[-(1:3)],
                 grouping=tdata$Tissuetype)
 lda_out2$prior
 lda_out2$svd^2 / sum(lda_out2$svd^2) # explained var
-# lda_out2$scaling
+lda_out2$scaling |> head()
 lda_pred2 <- predict(lda_out2)
 lda_plotdata <- 
   lda_pred2$x |> 
@@ -52,16 +66,17 @@ lda_plotdata <-
 lda_plotdata |> 
   ggplot(aes(Tissuetype,LD1, color=Tissuetype))+
   geom_boxplot()+
+  geom_hline(yintercept = 0, color="darkgreen")+
   geom_hline(yintercept = -2)
 
 confusionMatrix(lda_pred2$class,tdata$Tissuetype)
 
 
-data(bordeaux)
+#data(bordeaux)
+bordeaux <- readxl::read_excel('F:/Aktenschrank/Kontakte/CQ_Bildung/Projekte/ABI/RClass2023/Data/bordeaux.xlsx') |> 
+  mutate(quality=factor(quality,
+                        levels=c('bad','medium', 'good')))
 #import from excel!
-bordeaux <- mutate(bordeaux,
-                   quality=factor(quality,
-                                  levels=c('bad','medium', 'good')))
 lda_formula <- paste('quality',
                      paste(c('temperature', 'sun',
                              'heat', 'rain'), collapse='+'),

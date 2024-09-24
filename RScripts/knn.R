@@ -18,7 +18,7 @@ rawdata <- penguins |>
 rawdata <- mutate(rawdata,
                   ID=paste('P', 1:nrow(rawdata))) |> 
   select(ID, everything())
-predvars <- FindVars('length')
+predvars <- ColSeeker(rawdata,'length')
 
 rawplot <- 
   ggplot(rawdata, 
@@ -44,12 +44,18 @@ scaled <- rawdata |>
   select(predvars$names) |> 
   caret::preProcess(method = c('center',"scale"))
 rawdata <- predict(scaled,rawdata) |> 
-  as_tibble() |> 
-  rename(flipper_length_mm_rnorm=flipper_length_mm,
-         bill_length_mm_rnorm=bill_length_mm) |> 
-  select(contains('rnorm')) |> 
-  cbind(rawdata) |> 
-  as_tibble()
+  select(ID,all_of(predvars$names)) |>
+  rename_with(.cols=predvars$names,
+                     ~paste0(.x,"_rnorm")) |> 
+  full_join(select(rawdata,-contains("_rnorm")),
+            by='ID') 
+  # bind_cols(rawdata)
+#  as_tibble() |> 
+  # rename(flipper_length_mm_rnorm=flipper_length_mm,
+  #        bill_length_mm_rnorm=bill_length_mm) |> 
+  # select(contains('rnorm')) |> 
+  #cbind(rawdata) |> 
+  # as_tibble()
 
 rawdata <- rawdata |> 
   select(predvars$names) |>
@@ -57,15 +63,15 @@ rawdata <- rawdata |>
   preprocessCore::normalize.quantiles(keep.names = TRUE) |> 
   as_tibble() |>
   rename_with(~paste0(.,'_qnorm')) |>
-  cbind(rawdata) |> 
-  as_tibble()
+  bind_cols(rawdata) 
 
 rawdata |> 
   pivot_longer(contains('length')) |> 
   ggplot(aes(value,fill=name))+
   geom_density()+
   facet_wrap(facets = vars(name),
-             scales='free')
+             scales='free')+
+  guides(fill="none")
 
 rawdata |> 
   ggplot(aes(bill_length_mm,bill_length_mm_rnorm))+
@@ -76,8 +82,9 @@ rawdata |>
 
 predvars_rnorm <- FindVars('rnorm')
 ggplot(rawdata, 
-       aes(!!sym(predvars_rnorm$names[1]), 
-           !!sym(predvars_rnorm$names[2]), color=species))+
+       aes(.data[[predvars_rnorm$names[1]]], 
+           .data[[predvars_rnorm$names[2]]], 
+           color=species))+
   geom_point()  
 
 # Set definition
@@ -93,17 +100,19 @@ testdata <- filter(rawdata,
                    !ID %in% traindata$ID) |> 
   select(ID,species,predvars_rnorm$names) 
 
-train_out <- knn3Train(train = traindata |> select(predvars_rnorm$names),
-          test = testdata |> select(predvars_rnorm$names),
-          cl = traindata$species,
-          k = 5) # number of neighbors to ask
+train_out <- knn3Train(
+  train = select(traindata,predvars_rnorm$names),
+  test = select(testdata, predvars_rnorm$names),
+  cl = traindata$species,
+  k = 5) # number of neighbors to ask
 str(train_out)
+head(train_out)
 train_res <- 
   attr(x = train_out,which = 'prob') |> 
   as_tibble() |> 
   mutate(predicted=factor(train_out)) |> 
-  cbind(testdata) |> 
-  as_tibble()
+  bind_cols(testdata) 
+
 train_res |> 
   pivot_longer(c(Adelie,Chinstrap,Gentoo),
                values_to = 'p species',
@@ -114,10 +123,12 @@ train_res |>
   facet_grid(rows = vars(species),
              labeller='label_both')
 
-CrossTable(train_res$predicted,train_res$species,
-                     prop.chisq = F, prop.t = F,
+CrossTable(train_res$predicted,
+           train_res$species,
+           prop.chisq = F, prop.t = F,
            format = 'SAS')
-
+caret::confusionMatrix(train_res$predicted, 
+                       reference = train_res$species)
 yardstick::accuracy(data = train_res,
                     truth=species,
                     estimate=predicted)
@@ -125,15 +136,40 @@ yardstick::accuracy(data = train_res,
 knn_formula <- paste0('species~',
                       paste(predvars_rnorm$names, 
                             collapse = '+')) |> 
-  as.formula()
-knn_out <- knn3(knn_formula, data=rawdata,k = 5)
-predict(knn_out,newdata = rawdata) |> 
+  as.formula() # how about adding sex in a 2nd run?
+knn_out <- knn3(knn_formula, 
+                data=rawdata,k = 5)
+pred_all <- 
+  predict(knn_out,newdata = rawdata) |> 
   as_tibble() |> 
-  cbind(rawdata)|> 
+  bind_cols(rawdata) |> 
+  mutate(predicted=
+           case_when(Adelie>Chinstrap &
+                       Adelie>Gentoo ~ 'Adelie',
+                     Chinstrap>Adelie &
+                       Chinstrap>Gentoo ~ 'Chinstrap',
+                     Gentoo>Adelie &
+                       Gentoo>Chinstrap ~ 'Gentoo') |> 
+           factor()) 
+
+# rowwise() |> 
+#   mutate(predicted=case_when(
+#     Adelie==max(Adelie,Chinstrap,Gentoo) ~ 'Adelie',
+#     Chinstrap==max(Adelie,Chinstrap,Gentoo) ~ 'Chinstrap',
+#     Gentoo==max(Adelie,Chinstrap,Gentoo) ~ 'Gentoo') |> 
+#       factor()) |> 
+#   ungroup()
+
+
+yardstick::accuracy(data = pred_all,
+                    truth=species,
+                    estimate=predicted)
+
+pred_all |> 
   pivot_longer(c(Adelie,Chinstrap,Gentoo),
                values_to = 'p species',
-               names_to = 'Species') |> 
-  ggplot(aes(Species,`p species`))+
+               names_to = 'Species_pred') |> 
+  ggplot(aes(Species_pred,`p species`))+
   geom_violin()+
   geom_beeswarm(cex = .25, alpha=.25)+
   facet_grid(rows = vars(species))
@@ -165,4 +201,29 @@ rawdata |>
 #   as_tibble() |> 
 #   ggplot(aes(x=value,y=x))+
 #   geom_point()
+rawdata <-  mutate(rawdata,
+                   pred_sex=case_when(
+                     male>=.5 ~ "male",
+                     .default = "female"
+                   ) |> 
+                     as.factor())
+yardstick::accuracy(data = rawdata,
+                    truth=sex,
+                    estimate=pred_sex)
+yardstick::sensitivity(data = rawdata,
+                    truth=sex,
+                    estimate=pred_sex,
+                    event_level="second")
+yardstick::specificity(data = rawdata,
+                       truth=sex,
+                       estimate=pred_sex,
+                       event_level="second")
+yardstick::ppv(data = rawdata,
+                       truth=sex,
+                       estimate=pred_sex,
+                       event_level="second")
+CrossTable(rawdata$pred_sex,
+           rawdata$sex,
+           prop.chisq = F, prop.t = F,
+           format = 'SPSS')
 

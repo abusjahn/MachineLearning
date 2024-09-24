@@ -10,24 +10,33 @@ pacman::p_load(conflicted,
 conflict_prefer('select','dplyr')
 conflict_prefer("filter", "dplyr")
 rawdata <- readRDS('Data/cervical.RData')
-predvars <- FindVars('\\d')
+predvars <- ColSeeker(namepattern = '-')
+scaled <- rawdata |> 
+  select(predvars$names) |> 
+  caret::preProcess(method = c(
+    "zv","nzv",
+    "YeoJohnson",#"pca",
+    "center","scale"))
+rawdata <- predict(scaled,rawdata)
+predvars <- ColSeeker(namepattern = '-')
+
 fviz_nbclust(rawdata |> select(predvars$names),
              FUNcluster = kmeans)
-kmeans_out4 <- kmeans(rawdata |> select(predvars$names),
-                     centers = 4, nstart = 10)
+kmeans_out2 <- kmeans(rawdata |> select(predvars$names),
+                     centers = 2, nstart = 10)
 
 rawdata <- 
-  mutate(rawdata,Cluster_k4=kmeans_out4$cluster |> as.factor())
+  mutate(rawdata,Cluster_k2=kmeans_out2$cluster |> as.factor())
 rawdata |> 
-  ggplot(aes(Tissuetype,fill=Cluster_k4))+
+  ggplot(aes(Tissuetype,fill=Cluster_k2))+
   geom_bar()
 rawdata |> 
-  ggplot(aes(fill=Tissuetype,x=Cluster_k4))+
+  ggplot(aes(fill=Tissuetype,x=Cluster_k2))+
   geom_bar(position = 'fill')+
   scale_y_continuous(name = 'Frequency', labels=scales::percent)
 
 
-fviz_cluster(kmeans_out4,rawdata |> select(predvars$names))
+fviz_cluster(kmeans_out2,rawdata |> select(predvars$names))
 
 
 predict(kmeans_out)

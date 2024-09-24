@@ -4,7 +4,8 @@ pacman::p_load(conflicted,
                palmerpenguins,
                ggfortify, GGally,
                PCAtools, # bioconductor
-               FactoMineR)
+               FactoMineR,
+               ggrepel)
 
 # conflict_scout()
 conflict_prefer('slice','dplyr')
@@ -24,9 +25,11 @@ cortestR(rawdata |> select(predvars$names),
   ggcormat(maxpoint = 10)
 
 
-ggpairs(rawdata |> select(species, predvars$names),
+ggpairs(rawdata |> select(species, sex, 
+                          predvars$names),
         aes(color=species,alpha=.5))
-pca_out <- prcomp(rawdata |> select(predvars$names),
+pca_out <- prcomp(rawdata |> 
+                    select(predvars$names),
                   center = T,scale. = T)
 summary(pca_out)
 
@@ -50,16 +53,58 @@ autoplot(pca_out, data=rawdata, colour='species',
 pca_out$x |> 
   as_tibble() |> 
   cbind(rawdata) |> 
-  ggplot(aes(PC1,PC2,color=species))+
+  ggplot(aes(PC1,PC3,color=species))+
   geom_point()
 
+pca_out$rotation |> 
+  as_tibble(rownames = "Variable") |> 
+  ggplot(aes(PC1,PC3))+
+  # geom_label_repel(aes(label=Variable))+
+  geom_text(aes(label=Variable),
+            hjust=0)+
+  geom_segment(aes(xend=0,yend=0),
+               arrow = arrow(end='first'))+
+  scale_y_continuous(expand=expansion(.2))+
+  scale_x_continuous(expand=expansion(
+    mult = c(.1,.75)))
+
+pca_loadings <- (pca_out$rotation*2.5) |> 
+  as_tibble(rownames = "Variable")
+pca_out$x |> 
+  as_tibble() |> 
+  cbind(rawdata) |> 
+  ggplot(aes(PC1,PC3,color=species))+
+  geom_point()+
+  geom_text(
+    data=pca_loadings,
+    color="black",
+    aes(label=Variable),
+            hjust=0)+
+  geom_segment(aes(xend=0,yend=0),
+               data=pca_loadings,
+               color="black",
+               arrow = arrow(end='first',
+                             length = unit(.05,
+                                           'npc')))+
+  scale_y_continuous(expand=expansion(.2),
+                     breaks=seq(-10,10,1),
+                     sec.axis = sec_axis(
+                       ~(./2.5), 
+                       name = "Loading",
+                       breaks = seq(-3,10,1)/2.5))+
+  scale_x_continuous(expand=expansion(
+    mult = c(.1,.75)),
+    breaks=seq(-10,10,1),
+    sec.axis = sec_axis(
+      ~(./2.5), name = "Loading",
+      breaks = seq(-10,10,1)/2.5))
 
 # decathlon
 data("decathlon")
 cortestR(decathlon |> select(1:10),
          split = T) |> 
   pluck('corout') |> 
-  ggcormat(maxpoint = 10)
+  ggcormat(maxpoint = 15)
 ggpairs(decathlon |> select(1:10))
 
 pca_out <- prcomp(decathlon |> select(1:10),
@@ -121,3 +166,4 @@ pca_out3$loadings |>
   geom_point(data=pca_out3$rotated, color='grey', shape=1)+
   geom_segment(xend=0,yend=0,arrow=arrow(ends='first'))+
   ggrepel::geom_label_repel(aes(label=measure))
+

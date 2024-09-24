@@ -43,5 +43,6 @@ lda_plotdata |>
   geom_boxplot()+
   geom_hline(yintercept = 1)
 
-confusionMatrix(lda_pred$class,rawdata$diabetes)
+confusionMatrix(lda_pred$class,rawdata$diabetes,
+                positive='yes') 
 
