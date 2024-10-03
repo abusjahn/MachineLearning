@@ -123,7 +123,8 @@ diffs <- diff(resamps)
 summary(diffs)
 xgbfit
 xgbfit[["bestTune"]]
-knnfit
+knnfit[["bestTune"]]
+
 # use xgbfit to predict test data ####
 xgbpred <- predict(xgbfit, newdata = testdata)
 confusionMatrix(xgbpred, testdata$species)

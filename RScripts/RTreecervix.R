@@ -87,7 +87,7 @@ test <- filter(rawdata,
 # alternatively use something like make.names(unique=T)
 rf_out <- randomForest(x = train[-(1:2)],
                        y = train$Tissuetype,
-                       ntree=10^4,mtry=100)
+                       ntree=10^5,mtry=25)
 p1 <- predict(rf_out, train)
 confusionMatrix(p1, train$Tissuetype)
 

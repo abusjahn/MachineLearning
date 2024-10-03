@@ -46,13 +46,13 @@ scaled <- rawdata |>
 rawdata <- predict(scaled,rawdata) |> 
   select(ID,all_of(predvars$names)) |>
   rename_with(.cols=predvars$names,
-                     ~paste0(.x,"_rnorm")) |> 
-  full_join(select(rawdata,-contains("_rnorm")),
+                     ~paste0(.x,"_std")) |> 
+  full_join(select(rawdata,-contains("_std")),
             by='ID') 
   # bind_cols(rawdata)
 #  as_tibble() |> 
-  # rename(flipper_length_mm_rnorm=flipper_length_mm,
-  #        bill_length_mm_rnorm=bill_length_mm) |> 
+  # rename(flipper_length_mm_std=flipper_length_mm,
+  #        bill_length_mm_std=bill_length_mm) |> 
   # select(contains('rnorm')) |> 
   #cbind(rawdata) |> 
   # as_tibble()
@@ -74,16 +74,16 @@ rawdata |>
   guides(fill="none")
 
 rawdata |> 
-  ggplot(aes(bill_length_mm,bill_length_mm_rnorm))+
+  ggplot(aes(bill_length_mm,bill_length_mm_std))+
   geom_point()
 rawdata |> 
   ggplot(aes(bill_length_mm,bill_length_mm_qnorm))+
   geom_point()
 
-predvars_rnorm <- FindVars('rnorm')
+predvars_std <- FindVars('_std')
 ggplot(rawdata, 
-       aes(.data[[predvars_rnorm$names[1]]], 
-           .data[[predvars_rnorm$names[2]]], 
+       aes(.data[[predvars_std$names[1]]], 
+           .data[[predvars_std$names[2]]], 
            color=species))+
   geom_point()  
 
@@ -91,18 +91,18 @@ ggplot(rawdata,
 set.seed(2023)
 traindata <- 
   rawdata |> 
-  select(ID,species,sex,predvars_rnorm$names) |> 
+  select(ID,species,sex,predvars_std$names) |> 
   group_by(species,sex) |> 
   slice_sample(prop = 2/3) |> 
   ungroup() |> 
   select(-sex)
 testdata <- filter(rawdata,
                    !ID %in% traindata$ID) |> 
-  select(ID,species,predvars_rnorm$names) 
+  select(ID,species,predvars_std$names) 
 
 train_out <- knn3Train(
-  train = select(traindata,predvars_rnorm$names),
-  test = select(testdata, predvars_rnorm$names),
+  train = select(traindata,predvars_std$names),
+  test = select(testdata, predvars_std$names),
   cl = traindata$species,
   k = 5) # number of neighbors to ask
 str(train_out)
@@ -134,7 +134,7 @@ yardstick::accuracy(data = train_res,
                     estimate=predicted)
 
 knn_formula <- paste0('species~',
-                      paste(predvars_rnorm$names, 
+                      paste(predvars_std$names, 
                             collapse = '+')) |> 
   as.formula() # how about adding sex in a 2nd run?
 knn_out <- knn3(knn_formula, 
@@ -175,11 +175,11 @@ pred_all |>
   facet_grid(rows = vars(species))
 
 ggplot(rawdata,
-       aes(bill_length_mm_rnorm,flipper_length_mm_rnorm,
+       aes(bill_length_mm_std,flipper_length_mm_std,
            color=sex,shape=species))+
   geom_point()
 
-knn_out <- knn3(sex ~ bill_length_mm_rnorm + flipper_length_mm_rnorm + species, 
+knn_out <- knn3(sex ~ bill_length_mm_std + flipper_length_mm_std + species, 
                 data=rawdata,k = 5)
 
 rawdata <- predict(knn_out,newdata = rawdata) |> 

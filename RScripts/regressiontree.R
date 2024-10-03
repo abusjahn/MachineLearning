@@ -14,7 +14,7 @@ rawdata <- penguins |>
 rawdata <- mutate(rawdata,
                   ID=paste('P', 1:nrow(rawdata))) |> 
   select(ID, everything())
-predvars <- FindVars('length')
+predvars <- ColSeeker(namepattern = 'length')
 rawplot <- 
   ggplot(rawdata, 
          aes(.data[[predvars$names[1]]], 
@@ -43,7 +43,7 @@ ggplot(importance, aes(x=Variable,y=Score))+
   coord_flip()
 
 
-predvars <- FindVars(c('_mm','_g'))
+predvars <- ColSeeker(namepattern = c('_mm','_g'))
 rpart_formula_4 <- paste('species',
                          paste(predvars$names,
                                collapse='+'),
@@ -51,7 +51,7 @@ rpart_formula_4 <- paste('species',
   as.formula()
 set.seed(222)
 # unstratified spliting
-ind <- sample(2, nrow(rawdata), 
+ind <- sample(1:2, nrow(rawdata), 
               replace = TRUE, prob = c(0.7, 0.3))
 train <- rawdata[ind==1,]
 test <- rawdata[ind==2,]
@@ -84,6 +84,9 @@ gmodels::CrossTable(test_predicted$predicted,
            prop.chisq = F, prop.t = F,
            format = 'SPSS')
 
+confusionMatrix(test_predicted$predicted,
+                test_predicted$species)
+
 forrest_formula <- 
   paste('species',
         paste(predvars$names, collapse='+'),
@@ -98,7 +101,7 @@ confusionMatrix(p1, train$species)
 p2 <- predict(rf_out, test)
 confusionMatrix(p2, test$species)
 
-importance(rf_out)
+importance(rf_out) 
 
 # importance(rf_out) |> 
 # as_tibble(rownames='Measure') |> 

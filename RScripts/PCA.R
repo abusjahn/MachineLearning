@@ -1,3 +1,4 @@
+# BiocManager::install("PCAtools")
 pacman::p_load(conflicted,
                tidyverse,
                wrappedtools, 
@@ -33,7 +34,7 @@ pca_out <- prcomp(rawdata |>
                   center = T,scale. = T)
 summary(pca_out)
 
-screeplot(pca_out,npcs = 5)
+screeplot(pca_out,npcs = 4)
 
 pca_out$rotation
 
@@ -107,10 +108,10 @@ cortestR(decathlon |> select(1:10),
   ggcormat(maxpoint = 15)
 ggpairs(decathlon |> select(1:10))
 
-pca_out <- prcomp(decathlon |> select(1:10),
+pca_out_deca <- prcomp(decathlon |> select(1:10),
                   center = T,scale. = T)
-summary(pca_out)
-pca_out$rotation |> 
+summary(pca_out_deca)
+pca_out_deca$rotation |> 
   as_tibble(rownames = 'Exercise') |> 
   mutate(across(-Exercise,
                 ~case_when(abs(.)<.25 ~ 0,
@@ -167,3 +168,40 @@ pca_out3$loadings |>
   geom_segment(xend=0,yend=0,arrow=arrow(ends='first'))+
   ggrepel::geom_label_repel(aes(label=measure))
 
+
+pacman::p_load(boot,factoextra)
+
+# Load the decathlon data
+data("decathlon")
+
+# Function to perform PCA and extract desired components
+pca_func <- function(data, indices) {
+  pca <- prcomp(data[indices, 1:10], center = TRUE, scale. = TRUE)
+  return(list(pca = pca, loadings = pca$rotation[, 1:2]))
+}
+
+# Set the number of bootstrap replicates
+B <- 1000
+
+# Perform bootstrapping
+boot_out <- boot(decathlon[, 1:10], pca_func, R = B)
+
+# Extract bootstrap estimates
+boot_rotations <- sapply(boot_out$t, function(x) x$loadings)
+
+# Calculate the mean and standard deviation of each component's loadings
+mean_loadings <- colMeans(boot_rotations)
+sd_loadings <- apply(boot_rotations, 2, sd)
+
+# Visualize the stability of the loadings
+for (i in 1:B) {
+  pca_out <- boot_out$t[[i]]$pca
+  fviz_pca_biplot(pca_out, col.var = "cos2", repel = TRUE)
+  text(x = mean_loadings[, 1], y = mean_loadings[, 2], labels = colnames(decathlon)[1:10], pos = 4)
+  arrows(x0 = 0, y0 = 0, x1 = mean_loadings[, 1], y1 = mean_loadings[, 2], length = 0.1)
+  text(x = mean_loadings[, 1] + sd_loadings[, 1], y = mean_loadings[, 2] + sd_loadings[, 2],
+       labels = paste0("(SD = ", round(sd_loadings[, 1], 3), ", ", round(sd_loadings[, 2], 3), ")"), pos = 4)
+}
+
+# Assess stability using the bootstrap confidence intervals
+boot.ci(boot_out, type = "bca")

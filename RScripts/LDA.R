@@ -19,6 +19,8 @@ predvars <- FindVars(c('_mm','_g'))
 scaled <- rawdata |> 
   select(predvars$names) |> 
   caret::preProcess(method = c('center',"scale"))
+rawdata <- predict(scaled,rawdata)
+
 
 lda_formula <- paste('species',
                        paste(predvars$names, collapse='+'),
@@ -41,12 +43,12 @@ lda_plotdata |>
 confusionMatrix(lda_pred$class,rawdata$species)
 
 
-tdata <- readRDS('Data/cervical.RData')
+tdata <- readRDS('Data/cervical.RDS')
 predvars <- ColSeeker(tdata,namepattern = "-")
 #preProcess
 scale_rules <- tdata |> 
   select(predvars$names) |> 
-  caret::preProcess(method = c("zv","nzv",
+  caret::preProcess(method = c("nzv",
                                "YeoJohnson",
                                "corr",
                                "scale","center"))
@@ -83,17 +85,17 @@ lda_formula <- paste('quality',
                      sep='~') |> 
   as.formula()
 
-lda_out <- lda(lda_formula, data=bordeaux)
-lda_out$prior
-lda_out$svd^2 / sum(lda_out$svd^2) # explained var
-lda_out$scaling
-lda_pred <- predict(lda_out)
-lda_plotdata <- 
-  lda_pred$x |> 
-  as_tibble() |> 
-  cbind(bordeaux |> select(quality))
-lda_plotdata |> 
-  ggplot(aes(LD1,LD2, color=quality))+
-  geom_point()
-
-confusionMatrix(lda_pred$class,bordeaux$quality)
+# lda_out <- lda(lda_formula, data=bordeaux)
+# lda_out$prior
+# lda_out$svd^2 / sum(lda_out$svd^2) # explained var
+# lda_out$scaling
+# lda_pred <- predict(lda_out)
+# lda_plotdata <- 
+#   lda_pred$x |> 
+#   as_tibble() |> 
+#   cbind(bordeaux |> select(quality))
+# lda_plotdata |> 
+#   ggplot(aes(LD1,LD2, color=quality))+
+#   geom_point()
+# 
+# confusionMatrix(lda_pred$class,bordeaux$quality)

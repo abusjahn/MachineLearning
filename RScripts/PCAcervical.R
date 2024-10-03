@@ -21,7 +21,7 @@ predvars <- FindVars('-')
 scaled <- rawdata |> 
   select(predvars$names) |> 
   caret::preProcess(method = c(
-    "zv","nzv",
+    "nzv",
     "YeoJohnson",#"pca",
     "center","scale"))
 rawdata <- predict(scaled,rawdata)
@@ -76,6 +76,40 @@ pca_out$x[,1:2] |>
     name="PC1 score",
     expand=expansion(
     mult = c(.1,.1)),
+    breaks=seq(-100,100,5),
+    sec.axis = sec_axis(
+      ~(./100), name = "PC1 load",
+      breaks = seq(-100,100,5)/load_scaler))
+
+pca_out$x[,2:3] |> 
+  as_tibble() |> 
+  cbind(rawdata) |> 
+  ggplot(aes(PC2,PC3,color=Tissuetype))+
+  geom_point()+
+  # geom_text_repel(
+  #   data=pca_loadings,
+  #   color="black",segment.color="darkgreen", 
+  #   max.overlaps = 45,
+  #   aes(label=Variable),
+  #   hjust=0)+
+  # geom_segment(aes(xend=0,yend=0),
+  #              data=pca_loadings,
+  #              color="black",
+  #              arrow = arrow(end='first',
+  #                            length = unit(.05,
+  #                                          'npc')))+
+  scale_y_continuous(
+    name="PC2 score",
+    expand=expansion(.1),
+    breaks=seq(-100,100,2),
+    sec.axis = sec_axis(
+      ~(./load_scaler), 
+      name = "PC2 load",
+      breaks = seq(-100,100,2)/load_scaler))+
+  scale_x_continuous(
+    name="PC1 score",
+    expand=expansion(
+      mult = c(.1,.1)),
     breaks=seq(-100,100,5),
     sec.axis = sec_axis(
       ~(./100), name = "PC1 load",

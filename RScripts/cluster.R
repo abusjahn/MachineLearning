@@ -36,10 +36,61 @@ rawdata |>
   geom_point()
 rawdata |> 
   ggplot(aes(flipper_length_mm,bill_length_mm,
-             color=species,shape=Cluster_k2var4))+
+             shape=species,color=Cluster_k2var4))+
   geom_point()
 
 fviz_cluster(kmeans_out,rawdata |> select(predvars$names))
 
 # predict(kmeans_out)
 clue::cl_predict(kmeans_out)
+
+
+
+# more clusters
+kmeans_out3 <- kmeans(rawdata |> select(predvars$names),
+                     centers = 3)
+
+rawdata <- 
+  mutate(rawdata,Cluster_k3var4=kmeans_out3$cluster |> as.factor())
+rawdata |> 
+  ggplot(aes(species,fill=Cluster_k3var4))+
+  geom_bar()
+rawdata |> 
+  ggplot(aes(fill=species,x=Cluster_k3var4))+
+  geom_bar(position = 'fill')+
+  scale_y_continuous(name = 'Frequency', labels=scales::percent)
+
+rawdata |> 
+  ggplot(aes(flipper_length_mm,bill_length_mm,
+             shape=species,color=Cluster_k3var4))+
+  geom_point()
+rawdata |> 
+  ggplot(aes(flipper_length_mm,bill_length_mm,
+             shape=species,color=Cluster_k3var4))+
+  geom_point()
+
+
+kmeans_out6 <- kmeans(rawdata |> select(predvars$names),
+                     centers = 6)
+
+rawdata <- 
+  mutate(rawdata,Cluster_k6var4=kmeans_out6$cluster |> as.factor())
+rawdata |> 
+  ggplot(aes(species,fill=Cluster_k6var4))+
+  geom_bar()+
+  facet_grid(rows=vars(sex))
+rawdata |> 
+  ggplot(aes(fill=species,x=Cluster_k6var4))+
+  geom_bar(position = 'fill')+
+  scale_y_continuous(name = 'Frequency', labels=scales::percent)+
+  facet_grid(rows=vars(sex))
+
+rawdata |> 
+  ggplot(aes(flipper_length_mm,bill_length_mm,
+             shape=species,color=Cluster_k6var4))+
+  geom_point()+
+  facet_grid(rows=vars(sex))
+rawdata |> 
+  ggplot(aes(flipper_length_mm,bill_length_mm,
+             shape=species,color=Cluster_k6var4))+
+  geom_point()
