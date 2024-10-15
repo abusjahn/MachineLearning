@@ -80,7 +80,7 @@ rawdata |>
   ggplot(aes(bill_length_mm,bill_length_mm_qnorm))+
   geom_point()
 
-predvars_std <- FindVars('_std')
+predvars_std <- ColSeeker(namepattern = '_std')
 ggplot(rawdata, 
        aes(.data[[predvars_std$names[1]]], 
            .data[[predvars_std$names[2]]], 

@@ -14,7 +14,7 @@ rawdata <- penguins |>
 rawdata <- mutate(rawdata,
                   ID=paste('P', 1:nrow(rawdata))) |> 
   select(ID, everything())
-predvars <- FindVars(c('_mm','_g'))
+predvars <- ColSeeker(namepattern = c('_mm','_g'))
 fviz_nbclust(rawdata |> select(predvars$names),
              FUNcluster = kmeans)
 kmeans_out <- kmeans(rawdata |> select(predvars$names),

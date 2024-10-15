@@ -14,7 +14,7 @@ conflicts_prefer(
   dplyr::slice)
 rawdata <- penguins |> 
   na.omit()
-predvars <- FindVars(c('_mm','_g'))
+predvars <- ColSeeker(namepattern = c('_mm','_g'))
 rawdata <- select(rawdata,
                   species, predvars$names)
 # create training/test data ####
